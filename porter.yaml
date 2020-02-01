@@ -62,12 +62,12 @@ testing-regex:
         - mongodb
       flags:
         namespace: default
-        o: json #jsonpath="{.data.mongodb-root-password}"
-
-   # kubectl get secret --namespace default mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 -d
+        o: json 
       outputs:
         - name: mongo-root-pwd
-          jsonPath: ".data.mongodb-root-password"
+          jsonPath: "$.data.mongodb-root-password"
+   # kubectl get secret --namespace default mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 -d
+
 
 upgrade:
   - exec:
