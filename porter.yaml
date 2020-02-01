@@ -1,0 +1,111 @@
+# This is the configuration for Porter
+# You must define steps for each action, but the rest is optional
+# See https://porter.sh/author-bundles for documentation on how to configure your bundle
+# Uncomment out the sections below to take full advantage of what Porter can do!
+
+name: azure-marketplace-mongodb-bitnami
+version: 0.1.0
+description: "A bundle for the Bitnami Helm chart of MongoDB."
+# TODO: update the registry to your own, e.g. myregistry/porter-hello:v0.1.0
+tag: squillace/mongodb-helm-bitnami:v0.1.0
+
+# Uncomment the line below to use a template Dockerfile for your invocation image
+dockerfile: Dockerfile.tmpl
+
+mixins:
+  - helm3
+  - kubernetes
+  - exec
+  - az
+
+
+install:
+  - exec: 
+      description: "Logging in to Azure..."
+      command: sh
+      flags:
+        c: az login --service-principal --username "{{ bundle.credentials.AZURE_CLIENT_ID}}" --password "{{ bundle.credentials.AZURE_SP_PASSWORD}}" --tenant "{{ bundle.credentials.TENANT_ID_OR_DNS}}" >> /dev/null
+  - helm3:
+      description: "Adding the Azure marketplace repository."
+      arguments:
+        - repo 
+        - add 
+        - azure-marketplace 
+        - https://marketplace.azurecr.io/helm/v1/repo
+  - helm3:
+      description: "Updating the markeplate repository..."
+      arguments:
+        - repo
+        - update
+  - helm3:
+      description: "Installing the Bitnami MongoDB helm chart."
+      arguments:
+        - install 
+        - mongodb
+        - azure-marketplace/mongodb
+
+#      flags:
+#        o: jsonpath="{.data.mongodb-root-password}"
+#      outputs:
+#        - name: mongodb-pwd-encoded
+#          regex: "(.*)"
+#        - name: NAME
+#          path: SOURCE_FILEPATH
+        
+testing-regex:
+  - exec:
+      command: kubectl
+      description: "Grabbing the root db admin password..."
+      arguments:
+        - get
+        - secret 
+        - mongodb
+      flags:
+        namespace: default
+        o: json #jsonpath="{.data.mongodb-root-password}"
+
+   # kubectl get secret --namespace default mongodb -o jsonpath="{.data.mongodb-root-password}" | base64 -d
+      outputs:
+        - name: mongo-root-pwd
+          jsonPath: ".data.mongodb-root-password"
+
+upgrade:
+  - exec:
+      description: "World 2.0"
+      command: bash
+      flags:
+        c: echo World 2.0
+
+uninstall:
+  - helm3:
+      description: "Installing the Bitnami MongoDB helm chart."
+      arguments:
+        - uninstall 
+        - mongodb
+
+
+
+# See https://porter.sh/author-bundles/#dependencies
+#dependencies:
+#  mysql:
+#    tag: getporter/mysql:v0.1.1
+#    parameters:
+#      database-name: wordpress
+
+# See https://porter.sh/wiring/#credentials
+#credentials:
+#  - name: kubeconfig
+#    path: /root/.kube/config
+credentials:
+  - name: AZURE_CLIENT_ID
+    description: "The client id for the service principal used to automate the bundle's actions."
+    env: AZURE_CLIENT_ID
+  - name: TENANT_ID_OR_DNS
+    description: "The tenant identity in which the service principal resides."
+    env: TENANT_ID_OR_DNS
+  - name: AZURE_SP_PASSWORD
+    description: "The service principal password that is used to log into Azure inside the bundle."
+    env: AZURE_SP_PASSWORD
+  - name: kubeconfig
+    description: "The path to a Kube config file."
+    path: /root/.kube/config
