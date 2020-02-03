@@ -18,6 +18,14 @@ mixins:
   - exec
   - az
 
+outputs:
+  - name: mongodb-root-pwd
+    description: "IP Address assigned to the Load Balancer"
+    type: string
+    applyTo: 
+    - install
+    - upgrade  
+
 
 install:
   - exec: 
@@ -43,6 +51,11 @@ install:
         - install 
         - mongodb
         - azure-marketplace/mongodb
+      flags:
+        o: json #not jsonpath
+      outputs:
+        - name: mongodb-root-pwd
+          jsonPath: "{.data.mongodb-root-password}"
 
 #      flags:
 #        o: jsonpath="{.data.mongodb-root-password}"
